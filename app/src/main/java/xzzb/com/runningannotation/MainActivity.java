@@ -19,7 +19,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 //跳转Main2页面
-                LRouter.getInstance().build("Main2").navigation();
+                LRouter.getInstance().build("/main/main2").navigation();
             }
         });
 
@@ -27,7 +27,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 //跳转Main2页面
-                LRouter.getInstance().build("Login").navigation();
+                LRouter.getInstance().build("/login/login").navigation();
             }
         });
 

@@ -8,8 +8,8 @@ import java.util.Map;
  */
 
 public class Warehouse {
-    static Map<String, Class<? extends IMap>> groupsIndex = new HashMap<>();
-    static Map<String, RouteMeta> routes = new HashMap<>();
+    public static Map<String, Class<? extends IRouteGroup>> groupsIndex = new HashMap<>();
+    public static Map<String, RouteMeta> routes = new HashMap<>();
 
 }
 

@@ -14,7 +14,7 @@ public class Constants {
     public static final String NAME_OF_ROOT = PROJECT + SEPARATOR + "Root";
 
 
-    public static final String IROUTE_GROUP = FACADE_PACKAGE + ".IMap";//IMap full url
+    public static final String IROUTE_GROUP = FACADE_PACKAGE + ".IRouteGroup";//IRouteGroup full url
     public static final String NAME_OF_GROUP = PROJECT + SEPARATOR + "Group" + SEPARATOR;
 
     public static final String PACKAGE_OF_GENERATE_FILE = "com.processor_lib.lrouter.routes";
@@ -28,7 +28,7 @@ public class Constants {
     public static final String KEY_MODULE_NAME = "LROUTER_MODULE_NAME";
     public static final String KEY_GENERATE_DOC_NAME = "LROUTER_GENERATE_DOC";
 
-    public static final String ITROUTE_ROOT = FACADE_PACKAGE + ".IRouteRoot";//IRouteRoot full url
+    public static final String IROUTE_ROOT = FACADE_PACKAGE + ".IRouteRoot";//IRouteRoot full url
     public static final String ANNOTATION_TYPE_ROUTE = FACADE_PACKAGE + ".LRoute";
 
 

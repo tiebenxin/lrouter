@@ -6,6 +6,6 @@ import java.util.Map;
  * Created by LL130386 on 2019/5/22.
  */
 
-public interface IMap {
+public interface IRouteGroup {
     void register(Map<String, RouteMeta> atlas);
 }

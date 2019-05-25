@@ -29,7 +29,6 @@ import java.util.TreeSet;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.StandardLocation;
@@ -39,9 +38,8 @@ import xzzb.com.processor_lib.LRoute;
 import xzzb.com.processor_lib.RouteMeta;
 
 import static javax.lang.model.element.Modifier.PUBLIC;
-import static xzzb.com.processor_lib.Constants.ANNOTATION_TYPE_ROUTE;
 import static xzzb.com.processor_lib.Constants.IROUTE_GROUP;
-import static xzzb.com.processor_lib.Constants.ITROUTE_ROOT;
+import static xzzb.com.processor_lib.Constants.IROUTE_ROOT;
 import static xzzb.com.processor_lib.Constants.METHOD_REGISTER;
 import static xzzb.com.processor_lib.Constants.NAME_OF_GROUP;
 import static xzzb.com.processor_lib.Constants.NAME_OF_ROOT;
@@ -85,105 +83,22 @@ public class RouterPorcessor extends BaseProcessor {
             return;
         }
         System.out.println(TAG + "--" + " Found routes, size is " + elements.size());
-        rootMap.clear();
-
-        TypeElement type_IMap = elementUtils.getTypeElement(IROUTE_GROUP);
-        ClassName routeMetaCn = ClassName.get(RouteMeta.class);
-        /*
-               Build input type, format as :
-
-               ```Map<String, Class<? extends IMap>>```
-             */
-        ParameterizedTypeName inputMapTypeOfRoot = ParameterizedTypeName.get(
-                ClassName.get(Map.class),
-                ClassName.get(String.class),
-                ParameterizedTypeName.get(
-                        ClassName.get(Class.class),
-                        WildcardTypeName.subtypeOf(ClassName.get(type_IMap))
-                )
-        );
-
-           /*
-
-              ```Map<String, RouteMeta>```
-             */
-        ParameterizedTypeName inputMapTypeOfGroup = ParameterizedTypeName.get(
-                ClassName.get(Map.class),
-                ClassName.get(String.class),
-                ClassName.get(RouteMeta.class)
-        );
-
-                /*
-              Build input param name.
-             */
-        ParameterSpec rootParamSpec = ParameterSpec.builder(inputMapTypeOfRoot, "routes").build();
-        ParameterSpec groupParamSpec = ParameterSpec.builder(inputMapTypeOfGroup, "atlas").build();
-
-        /*
-              Build method : 'register'
-              register
-             */
-        MethodSpec.Builder loadIntoMethodOfRootBuilder = MethodSpec.methodBuilder(METHOD_REGISTER)
-                .addAnnotation(Override.class)
-                .addModifiers(PUBLIC)
-                .addParameter(rootParamSpec);
-
+//        rootMap.clear();
 
         Map<String, List<RouteDoc>> docSource = new HashMap<>();
 
         for (Element element : elements) {
             LRoute route = element.getAnnotation(LRoute.class);
-            RouteMeta routeMeta = new RouteMeta(route.path(), route.name());
+            RouteMeta routeMeta = new RouteMeta(route.path(), route.name(), element);
             categories(routeMeta);
         }
 
-        for (Map.Entry<String, Set<RouteMeta>> entry : groupMap.entrySet()) {
-            String groupName = entry.getKey();
-            MethodSpec.Builder loadIntoMethodOfGroupBuilder = MethodSpec.methodBuilder(METHOD_REGISTER)
-                    .addAnnotation(Override.class)
-                    .addModifiers(PUBLIC)
-                    .addParameter(groupParamSpec);
+        TypeElement iRouteGroup = elementUtils.getTypeElement(IROUTE_GROUP);
+        TypeElement iRouteRoot = elementUtils.getTypeElement(IROUTE_ROOT);
 
-            List<RouteDoc> routeDocList = new ArrayList<>();
+        generatedGroup(iRouteGroup);
+        generatedRoot(iRouteRoot, iRouteGroup);
 
-            // Build group method body
-            Set<RouteMeta> groupData = entry.getValue();
-            for (RouteMeta routeMeta : groupData) {
-                RouteDoc routeDoc = extractDocInfo(routeMeta);
-                loadIntoMethodOfGroupBuilder.addStatement(
-                        "atlas.put($S, $T.build(" + "$S, $S" + "))",
-                        routeMeta.getPath(),
-                        routeMetaCn,
-                        routeMeta.getPath().toLowerCase(),
-                        routeMeta.getGroup().toLowerCase());
-
-                routeDoc.setClassName("");
-                routeDocList.add(routeDoc);
-            }
-
-            // Generate groups
-            String groupFileName = NAME_OF_GROUP + groupName;
-            JavaFile.builder(PACKAGE_OF_GENERATE_FILE,
-                    TypeSpec.classBuilder(groupFileName)
-//                            .addJavadoc(WARNING_TIPS)
-                            .addSuperinterface(ClassName.get(type_IMap))
-                            .addModifiers(PUBLIC)
-                            .addMethod(loadIntoMethodOfGroupBuilder.build())
-                            .build()
-            ).build().writeTo(filer);
-
-            System.out.println(">>> Generated group: " + groupName + "<<<");
-            rootMap.put(groupName, groupFileName);
-            docSource.put(groupName, routeDocList);
-        }
-
-        if (MapUtils.isNotEmpty(rootMap)) {
-            // Generate root meta by group name, it must be generated before root, then I can find out the class of group.
-            for (Map.Entry<String, String> entry : rootMap.entrySet()) {
-                loadIntoMethodOfRootBuilder.addStatement("routes.put($S, $T.class)", entry.getKey(), ClassName.get(PACKAGE_OF_GENERATE_FILE, entry.getValue()));
-                System.out.println(TAG + "--loadInto--" + ClassName.get(PACKAGE_OF_GENERATE_FILE, entry.getValue()));
-            }
-        }
 
         // Output route doc
         if (generateDoc) {
@@ -192,17 +107,120 @@ public class RouterPorcessor extends BaseProcessor {
             docWriter.close();
         }
 
+
+    }
+
+    private void generatedRoot(TypeElement iRouteRoot, TypeElement iRouteGroup) {
+         /*
+               Build input type, format as :
+
+               ```Map<String, Class<? extends IRouteGroup>> routes```
+             */
+        ParameterizedTypeName inputMapTypeOfRoot = ParameterizedTypeName.get(
+                ClassName.get(Map.class),
+                ClassName.get(String.class),
+                ParameterizedTypeName.get(
+                        ClassName.get(Class.class),
+                        WildcardTypeName.subtypeOf(ClassName.get(iRouteGroup))
+                )
+        );
+             /*
+              Build input param name.
+             */
+        ParameterSpec routesParam = ParameterSpec.builder(inputMapTypeOfRoot, "routes").build();
+
+        /*
+              Build method : 'register'
+              register
+             */
+        MethodSpec.Builder registerMethodBuild = MethodSpec.methodBuilder(METHOD_REGISTER)
+                .addAnnotation(Override.class)
+                .addModifiers(PUBLIC)
+                .addParameter(routesParam);
+
+        if (MapUtils.isNotEmpty(rootMap)) {
+            // Generate root meta by group name, it must be generated before root, then I can find out the class of group.
+            for (Map.Entry<String, String> entry : rootMap.entrySet()) {
+                registerMethodBuild.addStatement("routes.put($S, $T.class)", entry.getKey(), ClassName.get(PACKAGE_OF_GENERATE_FILE, entry.getValue()));
+                System.out.println(TAG + "--register--" + ClassName.get(PACKAGE_OF_GENERATE_FILE, entry.getValue()));
+            }
+        }
+
         // Write root meta into disk.
         String rootFileName = NAME_OF_ROOT + SEPARATOR + moduleName;
-        JavaFile.builder(PACKAGE_OF_GENERATE_FILE,
-                TypeSpec.classBuilder(rootFileName)
+        try {
+            JavaFile.builder(PACKAGE_OF_GENERATE_FILE,
+                    TypeSpec.classBuilder(rootFileName)
 //                        .addJavadoc(WARNING_TIPS)
-                        .addSuperinterface(ClassName.get(elementUtils.getTypeElement(ITROUTE_ROOT)))
-                        .addModifiers(PUBLIC)
-                        .addMethod(loadIntoMethodOfRootBuilder.build())
-                        .build()
-        ).build().writeTo(filer);
+                            .addSuperinterface(ClassName.get(iRouteRoot))
+                            .addModifiers(PUBLIC)
+                            .addMethod(registerMethodBuild.build())
+                            .build()
+            ).build().writeTo(filer);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
+    private void generatedGroup(TypeElement iRouteGroup) {
+   /*
+
+              ```Map<String, RouteMeta>```
+             */
+        ParameterizedTypeName inputMapTypeOfGroup = ParameterizedTypeName.get(
+                ClassName.get(Map.class),
+                ClassName.get(String.class),
+                ClassName.get(RouteMeta.class)
+        );
+        ParameterSpec altasParam = ParameterSpec.builder(inputMapTypeOfGroup, "atlas").build();
+
+        for (Map.Entry<String, Set<RouteMeta>> entry : groupMap.entrySet()) {
+            String groupName = entry.getKey();
+            MethodSpec.Builder registerMethodBuild = MethodSpec.methodBuilder(METHOD_REGISTER)
+                    .addAnnotation(Override.class)
+                    .addModifiers(PUBLIC)
+                    .addParameter(altasParam);
+
+            List<RouteDoc> routeDocList = new ArrayList<>();
+
+            // Build group method body
+            Set<RouteMeta> groupData = entry.getValue();
+            for (RouteMeta routeMeta : groupData) {
+                ClassName className = ClassName.get((TypeElement) routeMeta.getRawType());
+                System.out.println(TAG + "--className=" + className + "--rowType=" + routeMeta.getRawType());
+                RouteDoc routeDoc = extractDocInfo(routeMeta);
+                registerMethodBuild.addStatement(
+                        "atlas.put($S, $T.build(" + "$S, $S, $T.class" + "))",
+                        routeMeta.getPath(),
+                        ClassName.get(RouteMeta.class),
+                        routeMeta.getPath().toLowerCase(),
+                        routeMeta.getGroup().toLowerCase()
+                        , className);
+
+                routeDoc.setClassName(className.toString());
+                routeDocList.add(routeDoc);
+            }
+
+            // Generate groups
+            String groupFileName = NAME_OF_GROUP + groupName;
+            try {
+                JavaFile.builder(PACKAGE_OF_GENERATE_FILE,
+                        TypeSpec.classBuilder(groupFileName)
+//                            .addJavadoc(WARNING_TIPS)
+                                .addSuperinterface(ClassName.get(iRouteGroup))
+                                .addModifiers(PUBLIC)
+                                .addMethod(registerMethodBuild.build())
+                                .build()
+                ).build().writeTo(filer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+
+            System.out.println(">>> Generated group: " + groupName + "<<<");
+            rootMap.put(groupName, groupFileName);
+//            docSource.put(groupName, routeDocList);
+        }
 
     }
 

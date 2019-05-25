@@ -12,5 +12,5 @@ public interface IRouteRoot {
      *
      * @param routes input
      */
-    void register(Map<String, Class<? extends IMap>> routes);
+    void register(Map<String, Class<? extends IRouteGroup>> routes);
 }
